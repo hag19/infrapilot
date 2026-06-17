@@ -52,10 +52,15 @@ resource "proxmox_virtual_environment_vm" "gpu_worker" {
   }
 
   # Pass the whole PCI device (both functions) through to the guest as PCIe.
+  # Uses a Proxmox cluster PCI *mapping* (created once on the host) rather than a
+  # raw device id — raw hostpci can only be set by root@pam, but a mapped device
+  # is settable by the API-token user. Create it with:
+  #   pvesh create /cluster/mapping/pci --id rtx3070 \
+  #     --map node=<node>,path=0000:2b:00,id=10de:2488
   hostpci {
-    device = "hostpci0"
-    id     = var.gpu_pci_id
-    pcie   = true
+    device  = "hostpci0"
+    mapping = var.gpu_mapping
+    pcie    = true
   }
 
   network_device {

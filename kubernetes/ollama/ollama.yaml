@@ -30,6 +30,9 @@ spec:
     metadata:
       labels: { app: ollama }
     spec:
+      # The node's default containerd runtime is runc; request the nvidia
+      # RuntimeClass (created by the GPU Operator) so the GPU is injected.
+      runtimeClassName: nvidia
       containers:
         - name: ollama
           image: ollama/ollama:latest # pin a version in Phase 4 (GitOps)

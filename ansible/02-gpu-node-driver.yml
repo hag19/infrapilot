@@ -24,6 +24,15 @@
       changed_when: false
       failed_when: gpu_present.rc != 0
 
+    - name: Ensure gpg + ca-certificates (minimal cloud images lack them, but
+            apt_repository / signed-by keyrings need them)
+      ansible.builtin.apt:
+        name:
+          - gnupg
+          - ca-certificates
+        state: present
+        update_cache: true
+
     - name: Enable contrib + non-free-firmware components (Debian trixie)
       ansible.builtin.apt_repository:
         repo: "deb http://deb.debian.org/debian trixie main contrib non-free-firmware non-free"

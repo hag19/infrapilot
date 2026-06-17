@@ -40,8 +40,8 @@ spec:
             # (and set WEBUI_SECRET_KEY) if you expose it more widely.
             - { name: WEBUI_AUTH, value: "false" }
           resources:
-            requests: { cpu: "100m", memory: 256Mi }
-            limits: { memory: 1Gi }
+            requests: { cpu: "100m", memory: 512Mi }
+            limits: { memory: 2Gi }
           volumeMounts:
             - { name: data, mountPath: /app/backend/data }
           readinessProbe:

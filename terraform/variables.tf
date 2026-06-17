@@ -88,7 +88,17 @@ variable "gpu_pci_id" {
   description = <<-EOT
     PCI address of the RTX 3070 on the host, WITHOUT a function suffix so both
     functions (VGA 2b:00.0 + audio 2b:00.1) pass through together. Confirm with
-    `lspci -nn | grep -i nvidia` on the host.
+    `lspci -nn | grep -i nvidia` on the host. Used when creating the PCI mapping.
+  EOT
+}
+
+variable "gpu_mapping" {
+  type        = string
+  default     = "rtx3070"
+  description = <<-EOT
+    Name of the Proxmox cluster PCI mapping for the GPU. Raw hostpci passthrough
+    can only be set by root@pam; a mapped device is settable by an API token, so
+    we map the device once on the host and reference it by name here.
   EOT
 }
 
