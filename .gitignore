@@ -1,0 +1,24 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+
+# Ansible
+*.retry
+.vault_pass
+
+# Secrets / keys
+*.pem
+*.key
+id_rsa*
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

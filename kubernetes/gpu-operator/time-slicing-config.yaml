@@ -1,0 +1,18 @@
+# Advertises the single RTX 3070 as 4 schedulable nvidia.com/gpu slices so
+# multiple pods (e.g. Ollama + the agent) can share it. This is GPU
+# TIME-SLICING (cooperative sharing of one card), NOT true multi-GPU — the
+# accurate framing for the CV. Tune `replicas` to taste (VRAM is the real limit:
+# 8 GB total, so keep concurrent model loads modest).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: time-slicing-config
+  namespace: gpu-operator
+data:
+  rtx3070: |-
+    version: v1
+    sharing:
+      timeSlicing:
+        resources:
+          - name: nvidia.com/gpu
+            replicas: 4

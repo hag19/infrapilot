@@ -1,0 +1,104 @@
+---
+# Phase 1, step 1 — bind the RTX 3070 to vfio-pci on the Proxmox host so it can
+# be PCI-passed-through to the gpu-worker VM.
+#
+# IOMMU is already enabled on this host (amd_iommu=on iommu=pt) and nomodeset is
+# set, so NO grub/cmdline change is needed. We only need to:
+#   - tell vfio-pci to claim the GPU's PCI IDs,
+#   - blacklist nouveau/nvidia on the host,
+#   - ensure vfio modules load at boot,
+#   - rebuild initramfs.
+#
+# A REBOOT is required and will detach the GPU from the host console. Reboot is
+# GATED behind -e allow_reboot=true so this is safe to run for review first.
+#
+#   Dry preview : ansible-playbook 01-host-vfio.yml --check --diff
+#   Apply       : ansible-playbook 01-host-vfio.yml
+#   Apply+reboot: ansible-playbook 01-host-vfio.yml -e allow_reboot=true
+#
+# Verify after reboot:
+#   ssh hag@192.168.1.103 'lspci -nnk -s 2b:00'
+#   -> both functions should show "Kernel driver in use: vfio-pci"
+
+- name: Bind RTX 3070 to vfio-pci on the Proxmox host
+  hosts: proxmox
+  become: true
+  vars:
+    # RTX 3070 (GA104): VGA + HDMI-audio function. From `lspci -nn` on the host.
+    gpu_pci_ids:
+      - "10de:2488" # VGA controller
+      - "10de:228b" # HD audio controller
+    allow_reboot: false
+
+  tasks:
+    - name: Tell vfio-pci which devices to claim
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/vfio.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # Managed by ai-platform/ansible/01-host-vfio.yml
+          options vfio-pci ids={{ gpu_pci_ids | join(',') }}
+      notify: rebuild initramfs
+
+    - name: Blacklist host GPU drivers so they never grab the card
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/blacklist-gpu.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # Managed by ai-platform/ansible/01-host-vfio.yml
+          blacklist nouveau
+          blacklist nvidia
+          blacklist nvidiafb
+          blacklist snd_hda_intel
+          # Load vfio-pci before any GPU driver has a chance to bind.
+          softdep nouveau pre: vfio-pci
+          softdep nvidia pre: vfio-pci
+      notify: rebuild initramfs
+
+    - name: Ensure vfio modules load at boot
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/vfio.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # Managed by ai-platform/ansible/01-host-vfio.yml
+          vfio
+          vfio_iommu_type1
+          vfio_pci
+      notify: rebuild initramfs
+
+    - name: Flush handlers now so initramfs is rebuilt before the reboot gate
+      ansible.builtin.meta: flush_handlers
+
+    - name: Report current driver bound to the GPU (pre-reboot)
+      ansible.builtin.command: lspci -nnk -s 2b:00
+      register: gpu_driver
+      changed_when: false
+
+    - name: Show GPU driver state
+      ansible.builtin.debug:
+        var: gpu_driver.stdout_lines
+
+    - name: Reboot host to apply vfio binding (gated)
+      ansible.builtin.reboot:
+        msg: "Rebooting to bind RTX 3070 to vfio-pci (ai-platform)"
+        reboot_timeout: 600
+      when: allow_reboot | bool
+
+    - name: Reboot skipped — apply requires a manual host reboot
+      ansible.builtin.debug:
+        msg: >-
+          Config written. A reboot is required to bind the GPU to vfio-pci.
+          Re-run with -e allow_reboot=true, or reboot the host manually, then
+          verify with: lspci -nnk -s 2b:00  (expect 'vfio-pci').
+      when: not (allow_reboot | bool)
+
+  handlers:
+    - name: rebuild initramfs
+      ansible.builtin.command: update-initramfs -u -k all
+      changed_when: true

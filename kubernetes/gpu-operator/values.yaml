@@ -1,0 +1,23 @@
+# NVIDIA GPU Operator — driver + container toolkit are installed at the NODE
+# level by ansible/02-gpu-node-driver.yml, so we disable them here and let the
+# operator manage only the device plugin, DCGM exporter, and feature discovery.
+#
+#   helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
+#   helm install gpu-operator nvidia/gpu-operator \
+#     -n gpu-operator --create-namespace -f values.yaml
+
+driver:
+  enabled: false # installed on the node by Ansible
+toolkit:
+  enabled: false # nvidia-container-toolkit installed on the node by Ansible
+
+# DCGM exporter feeds GPU metrics to Prometheus in Phase 3.
+dcgmExporter:
+  enabled: true
+
+# Time-slicing: let multiple pods share the single RTX 3070. The replica count
+# is the number of slices the one physical GPU advertises as nvidia.com/gpu.
+devicePlugin:
+  config:
+    name: time-slicing-config
+    default: rtx3070

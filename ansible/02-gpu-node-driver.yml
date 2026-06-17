@@ -1,0 +1,102 @@
+---
+# Phase 1, step 3 — install the NVIDIA driver + container toolkit on the
+# gpu-worker VM (Debian 13 / trixie) so the kernel sees the passed-through
+# RTX 3070 and containers can request it.
+#
+# We install the driver at the NODE level (reliable on a custom kernel) and run
+# the GPU Operator later in "driver/toolkit pre-installed" mode (device plugin
+# + time-slicing only). See kubernetes/gpu-operator/.
+#
+#   ansible-playbook 02-gpu-node-driver.yml -e allow_reboot=true
+#
+# Verify: ssh debian@192.168.1.127 'nvidia-smi'  ->  should list the RTX 3070.
+
+- name: Install NVIDIA driver + container toolkit on the GPU worker
+  hosts: gpu_workers
+  become: true
+  vars:
+    allow_reboot: false
+
+  tasks:
+    - name: Confirm the GPU is visible on the PCI bus inside the VM
+      ansible.builtin.shell: lspci -nn | grep -i nvidia
+      register: gpu_present
+      changed_when: false
+      failed_when: gpu_present.rc != 0
+
+    - name: Enable contrib + non-free-firmware components (Debian trixie)
+      ansible.builtin.apt_repository:
+        repo: "deb http://deb.debian.org/debian trixie main contrib non-free-firmware non-free"
+        state: present
+        filename: debian-nonfree
+        update_cache: true
+
+    - name: Install kernel headers + build prerequisites
+      ansible.builtin.apt:
+        name:
+          - "linux-headers-{{ ansible_kernel }}"
+          - dkms
+          - build-essential
+        state: present
+        update_cache: true
+
+    - name: Install the NVIDIA driver (Debian packaged, builds via DKMS)
+      ansible.builtin.apt:
+        name:
+          - nvidia-driver
+          - firmware-misc-nonfree
+        state: present
+      notify: reboot gpu node
+
+    # --- NVIDIA container toolkit (lets containerd hand the GPU to pods) ---
+    - name: Add NVIDIA container-toolkit GPG key
+      ansible.builtin.get_url:
+        url: https://nvidia.github.io/libnvidia-container/gpgkey
+        dest: /usr/share/keyrings/nvidia-container-toolkit-keyring.asc
+        mode: "0644"
+
+    - name: Add NVIDIA container-toolkit repo
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.asc]
+          https://nvidia.github.io/libnvidia-container/stable/deb/$(ARCH) /
+        state: present
+        filename: nvidia-container-toolkit
+        update_cache: true
+
+    - name: Install nvidia-container-toolkit
+      ansible.builtin.apt:
+        name: nvidia-container-toolkit
+        state: present
+
+    - name: Configure containerd runtime for NVIDIA
+      ansible.builtin.command: nvidia-ctk runtime configure --runtime=containerd
+      register: ctk
+      changed_when: "'Using config' in ctk.stderr or ctk.rc == 0"
+      notify: restart containerd
+
+    - name: Flush handlers (reboot for driver, restart containerd)
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify nvidia-smi sees the GPU
+      ansible.builtin.command: nvidia-smi
+      register: smi
+      changed_when: false
+      failed_when: false
+
+    - name: Show nvidia-smi output
+      ansible.builtin.debug:
+        var: smi.stdout_lines
+
+  handlers:
+    - name: reboot gpu node
+      ansible.builtin.reboot:
+        msg: "Rebooting to load the NVIDIA kernel module (ai-platform)"
+        reboot_timeout: 600
+      when: allow_reboot | bool
+
+    - name: restart containerd
+      ansible.builtin.systemd:
+        name: containerd
+        state: restarted
+      failed_when: false
