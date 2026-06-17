@@ -1,0 +1,35 @@
+# Periodic autonomous health sweep. Each run, InfraPilot inspects the platform
+# and prints a diagnosis to its logs (kubectl -n ai logs job/...). Run on demand
+# instead with: kubectl -n ai create job --from=cronjob/infrapilot-healthcheck adhoc
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: infrapilot-healthcheck
+  namespace: ai
+spec:
+  schedule: "*/30 * * * *" # every 30 minutes
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: infrapilot
+          restartPolicy: Never
+          containers:
+            - name: infrapilot
+              image: ghcr.io/hag19/infrapilot:latest # build from agent/Dockerfile; pin a tag
+              envFrom:
+                - configMapRef:
+                    name: infrapilot-config
+              env:
+                - name: ANTHROPIC_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: infrapilot-secrets
+                      key: ANTHROPIC_API_KEY
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits: { memory: 512Mi }

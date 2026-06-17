@@ -1,0 +1,10 @@
+# Phase 5 agent. Apply with: kubectl apply -k kubernetes/agent/
+# (The Secret is intentionally NOT here — create it out-of-band; see
+# secret.example.yaml.)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ai
+resources:
+  - rbac.yaml
+  - configmap.yaml
+  - cronjob.yaml

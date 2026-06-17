@@ -1,0 +1,24 @@
+# Phase 5 InfraPilot agent. Wave 2: depends on the workloads (ns ai) and
+# observability (Prometheus) it diagnoses, which land in wave 0/1.
+# The infrapilot-secrets Secret is created out-of-band (see
+# kubernetes/agent/secret.example.yaml) and is not managed here.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: agent
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hag19/infrapilot.git
+    targetRevision: main
+    path: kubernetes/agent
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true

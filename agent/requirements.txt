@@ -1,0 +1,4 @@
+anthropic>=0.40
+kubernetes>=30.1
+requests>=2.31
+PyYAML>=6.0

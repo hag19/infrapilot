@@ -43,7 +43,7 @@ Operator's **time-slicing** (the accurate term — not "distributed GPU").
 | 2 | Ollama + Open WebUI | scaffolded |
 | 3 | Observability (Prometheus/Grafana/DCGM) | scaffolded |
 | 4 | GitOps (ArgoCD) | scaffolded |
-| 5 | InfraPilot agent (MCP + evals + full-stack) | todo |
+| 5 | InfraPilot agent (Claude + tools + evals) | scaffolded |
 
 ## Layout
 

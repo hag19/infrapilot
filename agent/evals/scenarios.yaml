@@ -1,0 +1,27 @@
+# Eval scenarios for InfraPilot. Each scenario stubs the tool outputs the agent
+# will see (so evals run deterministically, offline from real infra) and states
+# the root cause a good diagnosis must identify. The judge scores the agent's
+# final answer against `expects`.
+- name: ollama-pending-no-gpu
+  symptom: "The ollama pod in namespace ai has been Pending for 10 minutes."
+  fixtures:
+    list_pods: '[{"name":"ollama-abc","phase":"Pending","node":null,"restarts":0,"ready":false,"reasons":["Unschedulable"]},{"name":"open-webui-xyz","phase":"Running","node":"worker-1","restarts":0,"ready":true,"reasons":[]}]'
+    list_events: '[{"type":"Warning","reason":"FailedScheduling","object":"Pod/ollama-abc","message":"0/7 nodes are available: 7 Insufficient nvidia.com/gpu."}]'
+    describe_node: '{"name":"gpu-worker-1","gpu_capacity":null,"gpu_allocatable":null,"conditions":{"Ready":"True"}}'
+    query_prometheus: '{"status":"success","data":{"resultType":"vector","result":[]}}'
+  expects: >
+    The pod is unschedulable because no node advertises nvidia.com/gpu — the GPU
+    node/Operator/time-slicing is not present or not ready. Remediation involves
+    completing GPU enablement (Phase 1), not changing the Ollama manifest.
+
+- name: vram-exhausted-second-model
+  symptom: "Loading a second model into Ollama fails and the first one gets evicted."
+  fixtures:
+    query_prometheus: '{"status":"success","data":{"resultType":"vector","result":[{"metric":{"gpu":"0"},"value":[0,"7800"]}]}}'
+    list_pods: '[{"name":"ollama-abc","phase":"Running","node":"gpu-worker-1","restarts":0,"ready":true,"reasons":[]}]'
+    pod_logs: "llama_model_load: error loading model: unable to allocate CUDA memory"
+  expects: >
+    Root cause is the 8 GB VRAM ceiling — two 7-8B Q4 models don't fit, so the
+    second load OOMs / evicts the first. The fix is to keep one model loaded
+    (OLLAMA_MAX_LOADED_MODELS=1) and serve a single model at a time, not to add
+    replicas.

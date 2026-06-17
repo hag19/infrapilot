@@ -1,0 +1,56 @@
+# InfraPilot identity + least-privilege access. Read-only cluster access for
+# diagnosis; a narrow namespaced patch right for the (config-gated) remediation.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: infrapilot
+  namespace: ai
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: infrapilot-readonly
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/log, events, nodes, namespaces]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: infrapilot-readonly
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: infrapilot-readonly
+subjects:
+  - kind: ServiceAccount
+    name: infrapilot
+    namespace: ai
+---
+# Remediation right — only exercised when INFRAPILOT_ALLOW_REMEDIATION=true.
+# Scoped to Deployments in the `ai` namespace and to rollout-restart (patch).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: infrapilot-remediation
+  namespace: ai
+rules:
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [get, list, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: infrapilot-remediation
+  namespace: ai
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: infrapilot-remediation
+subjects:
+  - kind: ServiceAccount
+    name: infrapilot
+    namespace: ai

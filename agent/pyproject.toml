@@ -1,0 +1,14 @@
+[project]
+name = "infrapilot"
+version = "0.1.0"
+description = "AI SRE agent for the ai-platform GPU/K8s LLM stack"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.40",
+    "kubernetes>=30.1",
+    "requests>=2.31",
+    "PyYAML>=6.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["infrapilot*"]
