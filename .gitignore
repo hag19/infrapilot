@@ -20,6 +20,13 @@ id_rsa*
 # Claude's own project-local workspace (memory + skills, not for the repo)
 .claude/
 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
 # Editors / OS
 .DS_Store
 *.swp
