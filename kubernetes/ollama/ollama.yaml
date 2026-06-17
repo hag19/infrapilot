@@ -1,0 +1,76 @@
+# Ollama — the LLM runtime, scheduled onto the GPU worker by requesting one
+# time-slice (nvidia.com/gpu: 1). Pulled models are persisted to a PVC so they
+# survive pod restarts. 8 GB VRAM total → run ONE 7-8B Q4 model at a time.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: ai
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 50Gi
+  # storageClassName omitted → uses the cluster default (from the proxmox repo).
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: ai
+  labels: { app: ollama }
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # single RWO volume + single GPU slice → no rolling overlap
+  selector:
+    matchLabels: { app: ollama }
+  template:
+    metadata:
+      labels: { app: ollama }
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest # pin a version in Phase 4 (GitOps)
+          ports:
+            - { name: http, containerPort: 11434 }
+          env:
+            - { name: OLLAMA_HOST, value: "0.0.0.0:11434" }
+            # Keep a model resident 24h so the first prompt after idle is fast.
+            - { name: OLLAMA_KEEP_ALIVE, value: "24h" }
+            # One model at a time — 8 GB VRAM can't hold two 7-8B models.
+            - { name: OLLAMA_MAX_LOADED_MODELS, value: "1" }
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+              nvidia.com/gpu: "1" # one time-slice; also pins the pod to the GPU node
+            limits:
+              memory: 8Gi
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - { name: models, mountPath: /root/.ollama }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ollama-models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: ai
+  labels: { app: ollama }
+spec:
+  selector: { app: ollama }
+  ports:
+    - { name: http, port: 11434, targetPort: http }

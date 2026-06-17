@@ -1,0 +1,65 @@
+# Open WebUI — the browser chat UI. No GPU needed; it just talks to the Ollama
+# Service over the cluster network. Its own PVC stores users, chats, settings.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: open-webui-data
+  namespace: ai
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+  namespace: ai
+  labels: { app: open-webui }
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # single RWO volume
+  selector:
+    matchLabels: { app: open-webui }
+  template:
+    metadata:
+      labels: { app: open-webui }
+    spec:
+      containers:
+        - name: open-webui
+          image: ghcr.io/open-webui/open-webui:main # pin a version in Phase 4
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            # Point the UI at the in-cluster Ollama Service.
+            - { name: OLLAMA_BASE_URL, value: "http://ollama:11434" }
+            # Disables auth for a homelab single-user setup; flip to "true"
+            # (and set WEBUI_SECRET_KEY) if you expose it more widely.
+            - { name: WEBUI_AUTH, value: "false" }
+          resources:
+            requests: { cpu: "100m", memory: 256Mi }
+            limits: { memory: 1Gi }
+          volumeMounts:
+            - { name: data, mountPath: /app/backend/data }
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: open-webui-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui
+  namespace: ai
+  labels: { app: open-webui }
+spec:
+  selector: { app: open-webui }
+  ports:
+    - { name: http, port: 80, targetPort: http }

@@ -1,0 +1,30 @@
+# Exposes Open WebUI at a hostname via the cluster's ingress controller.
+# Assumes:
+#   - an ingress controller is installed (className "nginx" — adjust if different),
+#   - DNS for chat.hag19.howes resolves to the ingress VIP (homelab BIND),
+#   - cert-manager + a ClusterIssuer named "letsencrypt" OR a self-signed issuer
+#     for TLS. If you don't have cert-manager yet, delete the tls: block and the
+#     cert-manager annotation to serve plain HTTP first.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: open-webui
+  namespace: ai
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [chat.hag19.howes]
+      secretName: open-webui-tls
+  rules:
+    - host: chat.hag19.howes
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: open-webui
+                port:
+                  number: 80
