@@ -1,0 +1,23 @@
+# The time-slicing ConfigMap (advertise the RTX 3070 as 4 nvidia.com/gpu slices).
+# Wave 1: applied after the GPU Operator (wave 0) exists, since the device plugin
+# reads this ConfigMap. Pulls just that one file out of kubernetes/gpu-operator/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gpu-operator-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hag19/infrapilot.git
+    targetRevision: main
+    path: kubernetes/gpu-operator
+    directory:
+      include: "time-slicing-config.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gpu-operator
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }

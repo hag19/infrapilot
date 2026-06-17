@@ -1,0 +1,23 @@
+# Phase 2 workloads (Ollama + Open WebUI). Kustomize source — ArgoCD renders
+# kubernetes/ollama/kustomization.yaml directly. Wave 1: needs nvidia.com/gpu to
+# be schedulable, which requires the GPU Operator (wave 0).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ollama
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hag19/infrapilot.git
+    targetRevision: main
+    path: kubernetes/ollama
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true

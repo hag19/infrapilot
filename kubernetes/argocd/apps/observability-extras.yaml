@@ -1,0 +1,24 @@
+# The DCGM ServiceMonitor + GPU Grafana dashboard. Wave 1: the ServiceMonitor
+# CRD comes from kube-prometheus-stack (wave 0), so this must apply after.
+# Pulls just those two files out of kubernetes/observability/ (skips values.yaml,
+# which is a Helm values file, not a k8s manifest).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-extras
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hag19/infrapilot.git
+    targetRevision: main
+    path: kubernetes/observability
+    directory:
+      include: "{dcgm-servicemonitor.yaml,grafana-dashboard-gpu.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }

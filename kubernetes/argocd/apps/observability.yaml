@@ -1,0 +1,33 @@
+# kube-prometheus-stack (Helm) with our values from this git repo. Wave 0:
+# installs the Prometheus operator + its CRDs (ServiceMonitor etc.) before the
+# observability-extras app (wave 1) creates a ServiceMonitor.
+#
+# Verify/pin the chart version:
+#   helm search repo prometheus-community/kube-prometheus-stack --versions
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 75.6.0 # verify + pin to a known-good version
+      helm:
+        valueFiles:
+          - $values/kubernetes/observability/values.yaml
+    - repoURL: https://github.com/hag19/infrapilot.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true # kube-prometheus-stack CRDs are large

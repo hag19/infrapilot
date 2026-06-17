@@ -1,0 +1,32 @@
+# NVIDIA GPU Operator (Helm), with our values from this git repo via a second
+# "ref" source. Wave 0: installs the operator + its CRDs before anything that
+# depends on GPU resources or the DCGM ServiceMonitor target.
+#
+# Verify/pin the chart version:  helm search repo nvidia/gpu-operator --versions
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gpu-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  sources:
+    - repoURL: https://helm.ngc.nvidia.com/nvidia
+      chart: gpu-operator
+      targetRevision: v24.9.2 # verify + pin to a known-good version
+      helm:
+        valueFiles:
+          - $values/kubernetes/gpu-operator/values.yaml
+    - repoURL: https://github.com/hag19/infrapilot.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gpu-operator
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true # GPU Operator CRDs are large

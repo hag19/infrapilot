@@ -1,0 +1,31 @@
+# App-of-apps root. Apply this ONE Application and ArgoCD pulls in every child
+# Application under kubernetes/argocd/apps/, each of which deploys a layer of the
+# platform from this same git repo.
+#
+#   kubectl apply -f kubernetes/argocd/root-app.yaml
+#
+# Prereq: ArgoCD installed in the `argocd` namespace (see docs/04-gitops.md).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-platform
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hag19/infrapilot.git
+    targetRevision: main
+    path: kubernetes/argocd/apps
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
