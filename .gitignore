@@ -17,6 +17,9 @@ override.tf.json
 *.key
 id_rsa*
 
+# Claude's own project-local workspace (memory + skills, not for the repo)
+.claude/
+
 # Editors / OS
 .DS_Store
 *.swp
