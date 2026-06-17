@@ -18,26 +18,31 @@ which it is in `kubernetes/gpu-operator/values.yaml`).
 
 | File | Purpose |
 |------|---------|
-| `values.yaml` | kube-prometheus-stack Helm values (Prometheus + Alertmanager + Grafana, homelab-sized) |
 | `dcgm-servicemonitor.yaml` | scrapes the DCGM exporter in the `gpu-operator` namespace |
 | `grafana-dashboard-gpu.yaml` | ConfigMap dashboard, auto-imported by the Grafana sidecar |
 
+The kube-prometheus-stack itself (Prometheus + Alertmanager + Grafana) is
+**shared cluster infra owned by the base homelab repo** (`proxmox-k8s-ha`,
+release `monitoring`, values in `k8s/monitoring/values-monitoring.yaml`). This
+phase does **not** stand up a second stack — it only plugs GPU scraping + a
+dashboard into the existing one. (See `docs/04-gitops.md` for putting that shared
+stack under ArgoCD.)
+
 ## Deploy
 
+The `monitoring` stack already runs on the cluster (from the base homelab repo).
+We only add the GPU scrape config + dashboard:
+
 ```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-
-helm install monitoring prometheus-community/kube-prometheus-stack \
-  -n monitoring --create-namespace \
-  -f kubernetes/observability/values.yaml
-
-# the DCGM scrape config + GPU dashboard (namespace exists after the helm install)
 kubectl apply -f kubernetes/observability/dcgm-servicemonitor.yaml
 kubectl apply -f kubernetes/observability/grafana-dashboard-gpu.yaml
 
 kubectl -n monitoring rollout status deploy/monitoring-grafana
 ```
+
+> The DCGM `ServiceMonitor` carries `release: monitoring` so this cluster's
+> kube-prometheus-stack (default `serviceMonitorSelector`) adopts it. The Grafana
+> sidecar imports the dashboard ConfigMap by its `grafana_dashboard` label.
 
 ## Verify GPU metrics are flowing
 
