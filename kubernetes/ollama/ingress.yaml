@@ -1,19 +1,22 @@
-# Exposes Open WebUI at chat.hag19.howes via the cluster's ingress-nginx
-# (a DaemonSet with hostPort 80/443 on every worker). DNS: add an A record
-# chat.hag19.howes -> a worker IP (192.168.1.121), same pattern as rancher/grafana.
+# Exposes Open WebUI at https://chat.hag19.howes via ingress-nginx (a DaemonSet
+# with hostPort 80/443 on every worker). DNS: A record chat.hag19.howes -> a
+# worker IP (192.168.1.121), same pattern as rancher/grafana.
 #
-# Served over plain HTTP: this cluster has no ACME/letsencrypt ClusterIssuer, so
-# TLS is intentionally off (ssl-redirect disabled) to avoid a fake-cert warning.
-# To add TLS later, set a real cluster-issuer + a tls: block and flip ssl-redirect.
+# TLS: cert-manager issues the cert from the `pve-root-ca` ClusterIssuer (a real
+# CA). Import that root CA on your devices once to get trusted HTTPS for all
+# *.hag19.howes services. HTTP is redirected to HTTPS.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: open-webui
   namespace: ai
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    cert-manager.io/cluster-issuer: pve-root-ca
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts: [chat.hag19.howes]
+      secretName: open-webui-tls
   rules:
     - host: chat.hag19.howes
       http:
