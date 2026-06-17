@@ -1,0 +1,16 @@
+# Keep internal docs, VCS, local state, and Claude's workspace out of any image
+# build context.
+INTERNAL-DEPLOY-LOG.md
+.git/
+.claude/
+docs/
+*.md
+!agent/README.md
+**/__pycache__/
+*.py[cod]
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+ansible/*.retry
+.vault_pass

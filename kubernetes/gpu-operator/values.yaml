@@ -3,8 +3,13 @@
 # operator manage only the device plugin, DCGM exporter, and feature discovery.
 #
 #   helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
-#   helm install gpu-operator nvidia/gpu-operator \
+#   helm install gpu-operator nvidia/gpu-operator --version v24.3.0 \
 #     -n gpu-operator --create-namespace -f values.yaml
+#
+# PIN to v24.3.0: its bundled CUDA (12.4.1) matches the node driver 550 (CUDA
+# 12.4). Newer operators ship newer CUDA and crash the cuda-validator on a
+# consumer GPU ("forward compatibility on non-supported HW"). Bump this in
+# lockstep with the node driver (v24.6->555, v24.9->560, v26.3->570).
 
 driver:
   enabled: false # installed on the node by Ansible

@@ -15,7 +15,9 @@ spec:
   sources:
     - repoURL: https://helm.ngc.nvidia.com/nvidia
       chart: gpu-operator
-      targetRevision: v24.9.2 # verify + pin to a known-good version
+      targetRevision: v24.3.0 # pinned: bundles CUDA 12.4.1, matches node driver
+      # 550 (CUDA 12.4). v24.6=CUDA12.5/driver555, v24.9=CUDA12.6/driver560,
+      # v26.3=CUDA12.8/driver570 -> those crash the cuda-validator on driver 550.
       helm:
         valueFiles:
           - $values/kubernetes/gpu-operator/values.yaml

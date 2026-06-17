@@ -20,6 +20,9 @@ id_rsa*
 # Claude's own project-local workspace (memory + skills, not for the repo)
 .claude/
 
+# Internal deploy log (contains live infra specifics + secrets) — keep local only
+INTERNAL-DEPLOY-LOG.md
+
 # Python
 __pycache__/
 *.py[cod]
