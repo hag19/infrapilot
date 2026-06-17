@@ -1,0 +1,125 @@
+# A compact GPU dashboard (NVIDIA DCGM metrics). The Grafana sidecar auto-imports
+# any ConfigMap labeled grafana_dashboard, so this needs no manual upload.
+# Panels: GPU utilization, VRAM used, temperature, power draw.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-gpu
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/part-of: ai-platform
+data:
+  gpu.json: |
+    {
+      "title": "GPU — RTX 3070 (DCGM)",
+      "uid": "ai-platform-gpu",
+      "tags": ["gpu", "dcgm", "ai-platform"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "15s",
+      "time": { "from": "now-1h", "to": "now" },
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "current": {},
+            "hide": 0
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "GPU Utilization",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } },
+          "targets": [
+            { "expr": "DCGM_FI_DEV_GPU_UTIL", "legendFormat": "gpu {{gpu}}" }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "VRAM Used",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "decmbytes" } },
+          "targets": [
+            { "expr": "DCGM_FI_DEV_FB_USED", "legendFormat": "gpu {{gpu}}" }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Temperature",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "celsius" } },
+          "targets": [
+            { "expr": "DCGM_FI_DEV_GPU_TEMP", "legendFormat": "gpu {{gpu}}" }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Power Draw",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "watt" } },
+          "targets": [
+            { "expr": "DCGM_FI_DEV_POWER_USAGE", "legendFormat": "gpu {{gpu}}" }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "GPU Utilization (%)",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } },
+          "targets": [
+            { "expr": "DCGM_FI_DEV_GPU_UTIL", "legendFormat": "gpu {{gpu}}" }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "VRAM Used (MiB)",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+          "fieldConfig": { "defaults": { "unit": "decmbytes" } },
+          "targets": [
+            { "expr": "DCGM_FI_DEV_FB_USED", "legendFormat": "used gpu {{gpu}}" },
+            { "expr": "DCGM_FI_DEV_FB_FREE", "legendFormat": "free gpu {{gpu}}" }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Temperature (°C)",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+          "fieldConfig": { "defaults": { "unit": "celsius" } },
+          "targets": [
+            { "expr": "DCGM_FI_DEV_GPU_TEMP", "legendFormat": "gpu {{gpu}}" }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Power Draw (W)",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+          "fieldConfig": { "defaults": { "unit": "watt" } },
+          "targets": [
+            { "expr": "DCGM_FI_DEV_POWER_USAGE", "legendFormat": "gpu {{gpu}}" }
+          ]
+        }
+      ]
+    }

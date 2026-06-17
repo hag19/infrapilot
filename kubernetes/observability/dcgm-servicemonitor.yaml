@@ -1,0 +1,25 @@
+# Tells the Prometheus operator to scrape the NVIDIA DCGM exporter that the GPU
+# Operator runs in the gpu-operator namespace. This is what gets GPU utilization,
+# VRAM, temperature, power, and clocks into Prometheus.
+#
+# Verify the target service name/port on your cluster:
+#   kubectl -n gpu-operator get svc -l app=nvidia-dcgm-exporter
+#   kubectl -n gpu-operator get svc nvidia-dcgm-exporter -o jsonpath='{.spec.ports[*].name}'
+# Adjust the matchLabels / port below if they differ.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ai-platform
+spec:
+  namespaceSelector:
+    matchNames: [gpu-operator]
+  selector:
+    matchLabels:
+      app: nvidia-dcgm-exporter
+  endpoints:
+    - port: gpu-metrics # DCGM exporter metrics port (9400)
+      interval: 15s
+      path: /metrics

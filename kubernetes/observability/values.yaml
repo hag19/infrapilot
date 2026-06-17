@@ -1,0 +1,71 @@
+# kube-prometheus-stack (Prometheus + Alertmanager + Grafana + node/kube metrics).
+# Sized for a homelab. Installs into the `monitoring` namespace.
+#
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm repo update
+#   helm install monitoring prometheus-community/kube-prometheus-stack \
+#     -n monitoring --create-namespace -f values.yaml
+#
+# GPU metrics come from the DCGM exporter the GPU Operator already runs
+# (gpu-operator ns). We scrape it via the ServiceMonitor in dcgm-servicemonitor.yaml.
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    # Pick up ServiceMonitors/PrometheusRules in ANY namespace regardless of the
+    # helm "release" label — needed so our standalone DCGM ServiceMonitor (in the
+    # gpu-operator ns) is scraped.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits: { memory: 2Gi }
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { memory: 256Mi }
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+grafana:
+  # Change this before exposing beyond the LAN (or wire to a Secret).
+  adminPassword: changeme
+  persistence:
+    enabled: true
+    size: 5Gi
+  # The dashboard sidecar auto-imports any ConfigMap labeled grafana_dashboard=1,
+  # in any namespace — that's how grafana-dashboard-gpu.yaml lands automatically.
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+      label: grafana_dashboard
+  # Optional ingress — assumes nginx + cert-manager (see ingress notes in
+  # ../ollama/ingress.yaml). Delete tls/annotations to start on plain HTTP.
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+    hosts: [grafana.hag19.howes]
+    tls:
+      - hosts: [grafana.hag19.howes]
+        secretName: grafana-tls
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 512Mi }
