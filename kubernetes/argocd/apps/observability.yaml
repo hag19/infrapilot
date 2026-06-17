@@ -1,9 +1,16 @@
-# kube-prometheus-stack (Helm) with our values from this git repo. Wave 0:
-# installs the Prometheus operator + its CRDs (ServiceMonitor etc.) before the
-# observability-extras app (wave 1) creates a ServiceMonitor.
+# kube-prometheus-stack (Helm). The monitoring stack is SHARED cluster infra
+# owned by the base homelab repo (proxmox-k8s-ha), so its values live there and
+# this app references them as $values — this repo does not duplicate them.
 #
-# Verify/pin the chart version:
-#   helm search repo prometheus-community/kube-prometheus-stack --versions
+# Adopting the existing live release into ArgoCD: see docs/04-gitops.md
+# ("Adopting hand-installed releases"). Key facts pinned to match what's live
+# (helm -n monitoring list):
+#   - chart kube-prometheus-stack-86.2.0
+#   - release name "monitoring" (helm.releaseName below — must equal the live
+#     release so the render matches and adoption is a no-op)
+#
+# PREREQ: the base repo gitignores k8s/, so values-monitoring.yaml must be
+# un-ignored, committed and pushed there before ArgoCD can read it.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -16,11 +23,12 @@ spec:
   sources:
     - repoURL: https://prometheus-community.github.io/helm-charts
       chart: kube-prometheus-stack
-      targetRevision: 75.6.0 # verify + pin to a known-good version
+      targetRevision: 86.2.0 # pinned to the live release (app v0.91.0)
       helm:
+        releaseName: monitoring # must match the live Helm release name
         valueFiles:
-          - $values/kubernetes/observability/values.yaml
-    - repoURL: https://github.com/hag19/infrapilot.git
+          - $values/k8s/monitoring/values-monitoring.yaml
+    - repoURL: https://github.com/hag19/proxmox-k8s-ha.git
       targetRevision: main
       ref: values
   destination:

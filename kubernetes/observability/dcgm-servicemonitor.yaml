@@ -13,6 +13,13 @@ metadata:
   namespace: monitoring
   labels:
     app.kubernetes.io/part-of: ai-platform
+    # The kube-prometheus-stack on this cluster only adopts ServiceMonitors
+    # carrying its release label (serviceMonitorSelector: release=monitoring).
+    # This was previously set imperatively (kubectl label ... release=monitoring),
+    # so the object drifted from git and the observability-extras app had to stay
+    # out of ArgoCD (selfHeal would strip the label). Declaring it here makes the
+    # app safe to bring under ArgoCD.
+    release: monitoring
 spec:
   namespaceSelector:
     matchNames: [gpu-operator]
