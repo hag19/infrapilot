@@ -34,8 +34,27 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
+  # The Grafana admin password is NOT in git (the base-repo values don't set it),
+  # so the chart would render the default and a sync would reset the live
+  # password. Leave that secret field (and the Deployment checksum it drives)
+  # to the cluster; RespectIgnoreDifferences makes sync honor these, not just diff.
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: monitoring-grafana
+      namespace: monitoring
+      jsonPointers:
+        - /data/admin-password
+        - /data/admin-user
+    - group: apps
+      kind: Deployment
+      name: monitoring-grafana
+      namespace: monitoring
+      jqPathExpressions:
+        - '.spec.template.metadata.annotations."checksum/secret"'
   syncPolicy:
     automated: { prune: true, selfHeal: true }
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true # kube-prometheus-stack CRDs are large
+      - RespectIgnoreDifferences=true
