@@ -20,6 +20,11 @@ spec:
     path: kubernetes/argocd/apps
     directory:
       recurse: true
+      # Exclude the agent app until Phase 5: its image
+      # (ghcr.io/hag19/infrapilot) isn't built/pushed yet, so pulling it in
+      # would create a CronJob that ImagePullBackOffs every 30m. Remove this
+      # once the image + infrapilot-secrets exist.
+      exclude: "agent.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
