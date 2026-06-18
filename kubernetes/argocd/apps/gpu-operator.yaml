@@ -19,6 +19,12 @@ spec:
       # 550 (CUDA 12.4). v24.6=CUDA12.5/driver555, v24.9=CUDA12.6/driver560,
       # v26.3=CUDA12.8/driver570 -> those crash the cuda-validator on driver 550.
       helm:
+        # Do NOT let ArgoCD manage the CRDs. Helm never upgrades CRDs after the
+        # first install, so the live CRDs are from the earlier v26.3 install
+        # (controller-gen v0.20.1) and are NEWER than what this pinned v24.3.0
+        # chart ships (v0.14.0). Rendering+syncing them would DOWNGRADE the CRDs
+        # and strip fields. CRDs stay cluster-managed; ArgoCD owns the workloads.
+        skipCrds: true
         valueFiles:
           - $values/kubernetes/gpu-operator/values.yaml
     - repoURL: https://github.com/hag19/infrapilot.git
