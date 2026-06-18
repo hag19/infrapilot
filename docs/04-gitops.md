@@ -117,9 +117,12 @@ same objects. The clean handoff: make git reproduce what's live, drop Helm's
 release record (leaving the objects running), then let ArgoCD adopt them
 in place with server-side apply — no pod restarts.
 
-> Note: the live cluster applies child apps **directly** (the deploy log never
-> applied `root-app.yaml`), so adoption applies the one child Application, not
-> the app-of-apps root.
+> Note: the platform now runs under the `root-app.yaml` app-of-apps (the
+> `ai-platform` Application), which renders every child under
+> `kubernetes/argocd/apps/` from git and self-heals them. The `agent` app is
+> excluded (`directory.exclude: agent.yaml`) until its image exists. Adoption was
+> done per child app first; once a child is `Synced`, the root app keeps it that
+> way — so don't hand-edit child Applications, change them in git.
 
 ### gpu-operator (no config conflict — safe)
 
